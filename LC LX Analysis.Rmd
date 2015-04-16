@@ -1,0 +1,118 @@
+---
+title: "LC Price Analysis"
+author: "Derek Franks"
+date: 
+output: pdf_document
+---
+
+```{r messages=FALSE}
+
+require("dplyr")
+require("magrittr")
+require("rvest")
+require(ggplot2)
+
+# download prices, miles and model years
+lc <- html('http://www.cars.com/for-sale/searchresults.action?feedSegId=28705&sf2Nm=miles&requestorTrackingInfo=RTB_SEARCH&yrId=20199&yrId=20198&yrId=20197&yrId=20144&yrId=20196&yrId=20143&yrId=20142&yrId=20141&yrId=20140&yrId=20200&sf1Nm=price&sf2Dir=ASC&stkTypId=28881&PMmt=1-1-0&zc=75098&rd=100000&mdId=21381&mkId=20088&sf1Dir=DESC&searchSource=UTILITY&crSrtFlds=stkTypId-feedSegId-mkId-mdId&pgId=2102&rpp=250')
+
+
+prices <- lc %>%
+     html_nodes('.priceSort') %>%
+     html_text()
+miles <- lc %>%
+     html_nodes('.milesSort') %>%
+     html_text()
+year <- lc %>%
+     html_nodes('.modelYearSort') %>%
+     html_text()
+
+
+#clean up the data, getting everything to a numeric value
+year <- as.numeric(year)
+prices <- gsub("[[:punct:]]","", prices)
+prices <- as.numeric(prices)
+miles <- gsub(" mi.", "", miles)
+miles <- gsub("[[:punct:]]","", miles)
+miles <- as.numeric(miles)
+miles <- miles/10000
+
+
+#create data frame
+cars <- data.frame(prices, miles, year)
+cars$year <- as.factor(cars$year)
+
+#filter out rows with missing data
+cars <- cars[complete.cases(cars),]
+cars$type  <- "Land Cruiser"
+str(cars)
+summary(cars)
+
+
+
+
+# download LX prices, miles and model years
+lx <- html('http://www.cars.com/for-sale/searchresults.action?PMmt=1-0-0&crSrtFlds=stkTypId-feedSegId-mdId&feedSegId=28705&isDealerGrouping=false&rpp=250&sf1Dir=DESC&sf1Nm=price&sf2Dir=ASC&sf2Nm=miles&zc=75098&rd=100000&stkTypId=28881&yrId=20200&yrId=20144&yrId=20199&yrId=20143&yrId=20198&yrId=20142&yrId=20197&yrId=20141&yrId=20196&yrId=20140&yrId=20200&mkId=20070&mdId=21353&searchSource=GN_REFINEMENT')
+
+
+prices <- lx %>%
+     html_nodes('.priceSort') %>%
+     html_text()
+miles <- lx %>%
+     html_nodes('.milesSort') %>%
+     html_text()
+year <- lx %>%
+     html_nodes('.modelYearSort') %>%
+     html_text()
+
+
+#clean up the data, getting everything to a numeric value
+year <- as.numeric(year)
+prices <- gsub("[[:punct:]]","", prices)
+prices <- as.numeric(prices)
+miles <- gsub(" mi.", "", miles)
+miles <- gsub("[[:punct:]]","", miles)
+miles <- as.numeric(miles)
+miles <- miles/10000
+
+#create LX data frame
+cars1 <- data.frame(prices, miles, year)
+cars1$year <- as.factor(cars1$year)
+
+#filter out rows with missing data
+cars1 <- cars1[complete.cases(cars1),]
+cars1$type  <- "LX470"
+str(cars1)
+summary(cars1)
+
+
+#combine data
+cars_full <- rbind(cars, cars1)
+cars_full$type <- as.factor(cars_full$type)
+
+```
+
+
+
+```{r}
+fit1 <- lm(prices ~ miles + year, data = cars_full)
+summary(fit1)
+
+fit2 <- lm(prices ~ miles + year + type, data = cars_full)
+summary(fit2)
+
+ggplot(data = cars_full, aes(x = miles, y = prices, color = type)) +
+  geom_point(size = 4) +
+    xlab("Miles (units of 10k)")
+
+ggplot(data = cars_full, aes(x = year, y = prices)) +
+  geom_boxplot() + 
+  facet_wrap( ~ type)
+
+ggplot(data = cars_full, aes(x = year, y = prices)) +
+  geom_boxplot() + 
+  geom_jitter(position = position_jitter(width = .1)) +
+  facet_wrap( ~ type)
+
+```
+
+
